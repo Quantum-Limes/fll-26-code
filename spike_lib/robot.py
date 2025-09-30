@@ -36,7 +36,7 @@ def angleDiff(a, b):
     while diff > pi:
         diff -= 2 * pi
     while diff < -pi:
-        diff += 2 * pig
+        diff += 2 * pi
     return diff
 
 # vec2 and mat2 classes (basic implementation)
