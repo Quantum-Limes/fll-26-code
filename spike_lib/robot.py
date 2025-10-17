@@ -3,7 +3,7 @@ from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor
 from pybricks.parameters import Port, Button, Color, Direction, Stop
 from pybricks.robotics import DriveBase
 from pybricks.tools import wait, StopWatch
-from umath import cos, sin, atan2, pi, sqrt
+from umath import cos, sin, atan2, pi, sqrt, fabs, asin
 
 # Helper functions from maths.py
 def generateBezierCurve(p0, p1, p2, p3, num_points=10):
