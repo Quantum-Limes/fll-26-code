@@ -118,7 +118,7 @@ class Drive:
         self.motors = [self.left_motor, self.right_motor]
         self.drive_base = DriveBase(self.left_motor, self.right_motor, wheel_diameter, axle_track)
         self.updateLocation(vec2(0,0), 0)
-        self.avrMotorAngle = 0
+        self.setMotorsToDef()
         self.tasks = []
         self.drive_settings = {
             "default": {"straight_speed": 500, "straight_acceleration": 1000, "turn_rate": 200, "turn_acceleration": 500},
@@ -134,9 +134,10 @@ class Drive:
         else:
             print(f"Drive mode '{mode}' not found.")
 
-    def setMotorsToDef(self): #what is that???
+    def setMotorsToDef(self):
         for motor in self.motors:
             motor.reset_angle()
+        self.avrMotorAngle = 0
     
     def getMotorAngle(self):
         avrMotorAngle = average(*[motor.angle() for motor in self.motors])
@@ -144,6 +145,15 @@ class Drive:
         self.avrMotorAngle = avrMotorAngle
         return diff
 
+    def motorsDrive(self, leftSpeed, rightSpeed):
+        self.left_motor.run(leftSpeed)
+        self.right_motor.run(rightSpeed)
+
+    def motorsStop(self, brake_type=Stop.HOLD):
+        for motor in self.motors:
+            motor.stop(brake_type)
+
+    #zatím k ničemu
     def turnMotorRad(self, deviceID, angle:float, speed = 1000, background = False, simple = False, time = 0):
         if background:
             self.addTask(self.turnMotorRadGen(deviceID, angle, speed = speed, simple=simple, time = time))
@@ -270,12 +280,12 @@ class Drive:
 
             #add speed calculations here!
 
+            self.motorsDrive()
             if fabs(length) <= tolerance:
                 onPos = True
             yield
         if not connect[1]:
-            for motor in self.motors: #replace by motor contoling function (when done)
-                motor.stop()
+            self.motorsStop(self.brake)
 
     def calcDir(self, pos, length, speed, offsetAngle, backwards = False, extraDist = 0): #odpad
         a2 = (self.robot.hub.angleRad()-offsetAngle) % (2*pi)
