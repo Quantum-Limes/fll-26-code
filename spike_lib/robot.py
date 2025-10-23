@@ -31,6 +31,9 @@ def maxV(*values):
             maxValue = v
     return maxValue
 
+def average(*values):
+    return sum(values) / len(values)
+
 def angleDiff(a, b):
     '''returns difference between angles a and b
     - in radians
@@ -115,6 +118,7 @@ class Drive:
         self.motors = [self.left_motor, self.right_motor]
         self.drive_base = DriveBase(self.left_motor, self.right_motor, wheel_diameter, axle_track)
         self.updateLocation(vec2(0,0), 0)
+        self.avrMotorAngle = 0
         self.tasks = []
         self.drive_settings = {
             "default": {"straight_speed": 500, "straight_acceleration": 1000, "turn_rate": 200, "turn_acceleration": 500},
@@ -134,27 +138,11 @@ class Drive:
         for motor in self.motors:
             motor.reset_angle()
     
-    def open(self, background = False, time = 0): #not shure
-        self.turnMotor(0,0, background=True, simple = True, time = time)
-        self.turnMotor(1,0, background=background, simple = True, time = time)
-
-    def close(self, background = False): #not shure
-        angle = 200
-        if background:
-            self.turnMotor(0,-angle, background=True, simple = True, time = 400)
-            self.turnMotor(1,angle, background=background, simple = True, time = 400)
-        else:
-            self.turnMotor(0,-angle, background=True, simple = True)
-            self.turnMotor(1,angle, background=True, simple = True)
-            a = 0
-            while a < 700 and self.isTasksRunning():
-                self.runTasks()
-                a += 1
-            if a >= 1000:
-                print("Closing motors timed out, stopping tasks")
-            self.stopTasks()
-            for motor in self.motors:
-                motor.hold()
+    def getMotorAngle(self):
+        avrMotorAngle = average(*[motor.angle() for motor in self.motors])
+        diff = avrMotorAngle - self.avrMotorAngle
+        self.avrMotorAngle = avrMotorAngle
+        return diff
 
     def turnMotorRad(self, deviceID, angle:float, speed = 1000, background = False, simple = False, time = 0):
         if background:
@@ -222,7 +210,7 @@ class Drive:
 
     def locate(self):
         orientation = self.getOrientation()
-        length = 0 #doplň !!!!!!!!!!!!!!!!!!! a je to vector
+        length = self.getMotorAngle()*(self.drive_base.wheel_diameter * pi / 360)
         self.updateLocation(self.pos + vec2_polar(length, radians(orientation)), orientation)
 
     #drive base core

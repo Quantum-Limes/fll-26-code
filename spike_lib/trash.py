@@ -29,3 +29,25 @@ def bezier(self, p0:vec2, p1:vec2, p2:vec2, p3:vec2, numOfPoints = 10, speed = 5
         else:
             self.toPos(points[i], turn = False, stop=False, tolerance=self.cTolerance, extraDist=0.0,speed=speed)
     self.cStart = self.cFinish = vec2(0,0)
+
+def open(self, background = False, time = 0): #not shure
+        self.turnMotor(0,0, background=True, simple = True, time = time)
+        self.turnMotor(1,0, background=background, simple = True, time = time)
+
+def close(self, background = False): #not shure
+    angle = 200
+    if background:
+        self.turnMotor(0,-angle, background=True, simple = True, time = 400)
+        self.turnMotor(1,angle, background=background, simple = True, time = 400)
+    else:
+        self.turnMotor(0,-angle, background=True, simple = True)
+        self.turnMotor(1,angle, background=True, simple = True)
+        a = 0
+        while a < 700 and self.isTasksRunning():
+            self.runTasks()
+            a += 1
+        if a >= 1000:
+            print("Closing motors timed out, stopping tasks")
+        self.stopTasks()
+        for motor in self.motors:
+            motor.hold()
