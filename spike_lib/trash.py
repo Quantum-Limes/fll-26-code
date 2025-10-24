@@ -51,3 +51,12 @@ def close(self, background = False): #not shure
         self.stopTasks()
         for motor in self.motors:
             motor.hold()
+
+    #toposgen
+    if turn and not connect[0]:
+        if background:
+            self.rotateRad(angle, background=True)
+            while self.angleDiff(self.robot.hub.angleRad(), angle) > self.tolDiff:
+                yield
+        else:
+            self.rotateRad(angle)

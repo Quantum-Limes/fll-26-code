@@ -6,7 +6,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "pybricksdev",
-      "args": ["run", "ble", "main.py"]
+      "args": ["run", "ble", "controller.py"]
     }
   ]
 }

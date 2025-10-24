@@ -3,6 +3,7 @@ from pybricks.pupdevices import*
 from pybricks.parameters import*
 from pybricks.tools import wait
 from pybricks.iodevices import XboxController
+#from pybricks.robotics import DriveBase
 
 def clamp(value, min_value, max_value):
     """Clamp the value between min_value and max_value."""
@@ -15,6 +16,7 @@ class Drivebase:
         self.speed = speed/100
         self.turn_speed = turn_speed/100
 
+
     def drive(self, Rdir, dpad, slow_mode):
         if slow_mode:
             speed = self.speed / 2
@@ -23,15 +25,8 @@ class Drivebase:
             speed = self.speed
             turn_speed = self.turn_speed
 
-        if dpad == 1:
-            self.left_motor.run(speed*100)
-            self.right_motor.run(speed*100)
-        elif dpad == 3:
-            self.left_motor.run(-speed*100)
-            self.right_motor.run(-speed*100)
-        else:
-            self.left_motor.run(speed * Rdir[1] + turn_speed * Rdir[0])
-            self.right_motor.run(speed * Rdir[1] - turn_speed * Rdir[0])
+        self.left_motor.run(speed * Rdir[1] + turn_speed * Rdir[0])
+        self.right_motor.run(speed * Rdir[1] - turn_speed * Rdir[0])
         
 
 class Arm:
@@ -58,17 +53,13 @@ class Arm:
         return rot_speed, lift_speed
 
 
-    def arm_turn(self, Adir):
+    def arm_turn(self, Adir, Agrab):
         if self.turn_disabled:
             self.turn_disabled = self.turner.angle() != 0
             return
-        if not self.superarm:
-            self.turner.run(self.turn_speed * Adir[0]/100)
-            self.lifter.run(self.lift_speed * Adir[1]/100)
-        else:
-            rot_speed, lift_speed = self.super_arm_support(Adir)
-            self.turner.run(rot_speed)
-            self.lifter.run(lift_speed)
+        rot_speed, lift_speed = self.super_arm_support(Adir)
+        self.turner.run(rot_speed + self.turn_speed * Agrab[0]/100)
+        self.lifter.run(lift_speed + self.lift_speed * Agrab[1]/100)
 
     def turn_reset(self, pressed):
         if Button.X in pressed:
@@ -92,7 +83,7 @@ class Arm:
         
 
     def run(self, Adir, Agrab, pressed):
-        self.arm_turn(Adir)
+        self.arm_turn(Adir, Agrab)
         self.turn_reset(pressed)
         #self.arm_grab(Agrab, pressed)
 
@@ -128,16 +119,16 @@ class Robot:
         self.arm.run(Adir, Alift, pressed)
 
 hub = PrimeHub()
-Lw = Motor(Port.F, Direction.COUNTERCLOCKWISE)
-Rw = Motor(Port.B, Direction.CLOCKWISE)
-turnter = Motor(Port.D, Direction.CLOCKWISE)
-lifter = Motor(Port.E, Direction.CLOCKWISE)
-grabber = Motor(Port.A, Direction.CLOCKWISE)
+Lw = Motor(Port.B, Direction.COUNTERCLOCKWISE)
+Rw = Motor(Port.A, Direction.CLOCKWISE)
+turnter = Motor(Port.F, Direction.CLOCKWISE)
+lifter = Motor(Port.D, Direction.CLOCKWISE)
+#grabber = Motor(Port.A, Direction.CLOCKWISE)
 
 controller = XboxController()
 arm = Arm(turnter, lifter)
 arm.superarm = True #enable super arm support
-arm.SA_turn_gear = 1 #set to the gear ration of input/output (number of teeth) on the superarm rotation system
+arm.SA_turn_gear = 7*4/56 #set to the gear ration of input/output (number of teeth) on the superarm rotation system
 drive = Drivebase(Lw, Rw)
 robot = Robot(hub, drive, arm, controller)
 
