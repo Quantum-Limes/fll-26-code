@@ -4,7 +4,7 @@ from pybricks.parameters import Port, Button, Color, Direction, Stop
 from pybricks.robotics import DriveBase
 from pybricks.tools import wait, StopWatch
 from spike_lib.maths import *
-from spike_lib.sound import Sound
+# from spike_lib.sound import Sound
 
 
 class Robot:
@@ -12,7 +12,6 @@ class Robot:
     def __init__(self, hub: PrimeHub):
         self.hub = hub
         self.tasks = []
-        self.sound = Sound(hub)
 
     def isTasksRunning(self, numOfTasks = 0):
         if len(self.tasks) > numOfTasks:
@@ -378,7 +377,7 @@ class Arm:
 
 class SuperArm(Arm):
     def __init__(self, rotationMotor: Motor, liftMotor: Motor, color: Color ):
-        super().__init__(self, leftMotor=liftMotor, rightMotor=liftMotor, color=color)
+        super().__init__(leftMotor=rotationMotor, rightMotor=liftMotor, color=color)
         self.rotationMotor = rotationMotor
         self.liftMotor = liftMotor
 
