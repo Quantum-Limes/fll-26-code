@@ -7,7 +7,7 @@ from pybricks.tools import wait
 
 # Initialize the robot
 # PLEASE ADJUST THE PORTS AND DIMENSIONS TO MATCH YOUR ROBOT
-robot = Robot(left_motor_port=Port.A, right_motor_port=Port.E, wheel_diameter=56, axle_track=112)
+robot = Robot(left_motor_port=Port.A, right_motor_port=Port.E, wheel_diameter=56, axle_track=96)
 
 # Initialize the UI and Sound
 ui = UI(robot.hub)

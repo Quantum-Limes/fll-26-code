@@ -362,26 +362,19 @@ class Drive:
         rspeed = maxV(rspeed, speed)
         return rspeed
     
-    
-class SupperArm:
-    def __init__(self, length: float, elevation: float, liftGear: float, rotationGear: float, rotationSpeed = 200):
-        self.length = length
-        self.elevation = elevation
-        self.liftGear = liftGear #in / out
-        self.rotationGear = rotationGear #in / out
 
-    def calculale(self, height: float, orientation: float):
-        rotationAngle = orientation / self.rotationGear
-        liftAngle = asin((height - self.elevation)/self.length) / self.liftGear + orientation
-        rotationSpeed = 0
-        liftSpeed = 0
-        return liftAngle, rotationAngle, liftSpeed, rotationSpeed
 
 class Arm:
     def __init__(self, leftMotor: Motor, rightMotor: Motor, color: Color ):
         self.color = color if color != None or Color.NONE else raiseError("Arm color must be specified!", ValueError)
         self.leftMotor = leftMotor
         self.rightMotor = rightMotor
+        self.speed = 200
+
+    def align(self):
+        pass
+    
+
 
 class SuperArm(Arm):
     def __init__(self, rotationMotor: Motor, liftMotor: Motor, color: Color ):
@@ -390,40 +383,115 @@ class SuperArm(Arm):
         self.liftMotor = liftMotor
 
     def align(self):
-        self.liftMotor.run_until_stalled(200, then=Stop.HOLD, wait=False)
-        self.rotationMotor.run_until_stalled(200, then=Stop.HOLD, wait=True)
+        self.liftMotor.run_until_stalled(self.speed, Stop.HOLD, False)
+        self.rotationMotor.run_until_stalled(self.speed, Stop.HOLD, True)
         self.liftMotor.reset_angle(0)
         self.rotationMotor.reset_angle(-90)
 
-    def rotateByWait(self, angle):
-        self.rotationMotor.run_angle(200, angle/2*-1, then=Stop.HOLD, wait=False)
-        self.liftMotor.run_angle(1/3, angle*3, then=Stop.HOLD, wait=True)
+    def rotateBy(self, angle, wait: bool = False):
+        self.rotationMotor.run_angle(self.speed, angle/2*-1, Stop.HOLD, wait)
+        self.liftMotor.run_angle(1/3, angle*3, Stop.HOLD, wait)
 
-    def liftByWait(self, angle):
-        self.liftMotor.run_angle(200, angle*3, then=Stop.HOLD, wait=True)
+    def liftBy(self, angle, wait: bool = False):
+        self.liftMotor.run_angle(self.speed, angle*3, Stop.HOLD, wait)
 
-    def rotateBy(self, angle):
-        self.rotationMotor.run_angle(200, angle/2*-1, then=Stop.HOLD, wait=False)
-        self.liftMotor.run_angle(1/3, angle*3, then=Stop.HOLD, wait=False)
-
-    def liftBy(self, angle):
-        self.liftMotor.run_angle(200, angle*3, then=Stop.HOLD, wait=False)
-
-    def goTo(self, liftAngle, rotationAngle):
-        self.rotationMotor.run_angle(200, self.rotationMotor.angle - rotationAngle, then=Stop.HOLD, wait=False)
-        self.liftMotor.run_angle(200, self.liftMotor.angle - liftAngle, then=Stop.HOLD, wait=True)
 
 class LiftArm(Arm):
     def __init__(self, liftMotor: Motor, stuffMotor: Motor, color: Color ):
         super().__init__(self, leftMotor=liftMotor, rightMotor=liftMotor, color=color)
         self.liftMotor = liftMotor
         self.stuffMotor = stuffMotor
-        self.liftAmount = 0
+        self.liftHeight = 35
         self.stuffGone = False
     
     def align(self):
-        self.liftMotor.run_until_stalled(200, then=Stop.HOLD, wait=False)
-        self.stuffMotor.run_until_stalled(200, then=Stop.HOLD, wait=True)
-        self.liftAmount = 0
+        self.liftMotor.run_until_stalled(self.speed, Stop.HOLD, False)
+        self.stuffMotor.run_until_stalled(self.speed, Stop.HOLD, True)
+        self.liftHeight = 35
         self.liftMotor.reset_angle(0)
         self.stuffGone = False
+        self.stuffMotor.reset_angle(0)
+    
+    def liftTo(self, height, wait: bool = True):
+        clamped = clamp(height, 35, 140)
+        self.liftMotor.run_angle(500, (clamped - self.liftHeight)/25, Stop.HOLD, wait)
+
+    def stuffOut(self, wait: bool = True):
+        if self.stuffGone:
+            self.stuffMotor.run_angle(self.speed, -45, Stop.HOLD, wait)
+
+class Mlaticka(Arm):
+    def __init__(self, holderMotor: Motor, mlaticiMotor: Motor, color: Color):
+        super().__init__(holderMotor, mlaticiMotor, color)
+        self.mlaticiMotor = mlaticiMotor
+        self.holderMotor  = holderMotor
+
+    def align(self):
+        self.mlaticiMotor.run_until_stalled(-self.speed, Stop.HOLD, False)
+        self.holderMotor.run_until_stalled(self.speed, Stop.HOLD, True)
+        self.mlaticiMotor.reset_angle(68)
+        self.holderMotor.reset_angle(180)
+    
+    def mlaceni(self, count: int):
+        for i in range(count):
+            self.mlaticiMotor.run_angle(400, -90, Stop.HOLD, True)
+            self.mlaticiMotor.run_angle(self.speed, 90, Stop.HOLD, True)
+
+    def mlaceniAngle(self, angle: int, waitBool: bool=True):
+       self.mlaticiMotor.run_angle(self.speed, angle, Stop.HOLD, wait=waitBool)
+       
+    def turnGear(self, angle: int, waitBool: bool=True):
+        self.holderMotor.run_angle(self.speed, angle, Stop.HOLD, wait=waitBool)
+
+    def ejectFlag(self):
+        self.holderMotor.run_angle(self.speed, 50, Stop.HOLD, wait=True)
+
+        # self.liftMotor.run_until_stalled(200, then=Stop.HOLD, wait=False)
+        # self.stuffMotor.run_until_stalled(200, then=Stop.HOLD, wait=True)
+        # self.liftHeight = 35
+        # self.liftMotor.reset_angle(0)
+        # self.stuffGone = False
+        # self.stuffMotor.reset_angle(0)
+        
+
+        
+class Mission:
+    def __init__(self, pos: vec2, rot: float, run: function):
+        self.run = run
+        self.pos = pos
+        self.rot = rot
+        self.completed = False
+
+    def goToMission(self, drive: Drive, checkpoints: list = [vec2]):
+        if len(checkpoints):
+            for point in checkpoints:
+                drive.moveToPos(point)
+            if not self.completed:
+                drive.moveToPos(self.pos)
+                drive.rotate(self.rot)
+                self.run(drive)
+                self.completed = True
+            
+            
+            
+class Ride:
+    def __init__(self, arm: Arm):
+        self.arm = arm
+        arm.align()
+        self.color = arm.color
+        self.missions = {}
+    
+    def run(self, drive: Drive):
+        for mission in self.missions.values():
+            mission.goToMission(drive)
+
+    def appendMission(self, mission: Mission):
+        self.missions.append(mission)
+
+def rideManager(rides: set):
+    rides = {ride: ride.color for ride in rides}
+    
+    while True:
+        pass
+    
+

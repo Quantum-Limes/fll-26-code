@@ -46,4 +46,3 @@ class Sound:
     def beep(self, frequency=440, duration=100):
         self.hub.speaker.beep(frequency, duration)
 
-Sound.play("megalovania", mult=0.5)
