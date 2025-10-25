@@ -1,6 +1,6 @@
 from pybricks.hubs import PrimeHub
 from pybricks.pupdevices import Motor, ColorSensor, UltrasonicSensor
-from pybricks.parameters import Port, Button, Color, Direction, Stop
+from pybricks.parameters import Port, Button, Color, Direction, Stop, Axis
 from pybricks.robotics import DriveBase
 from pybricks.tools import wait, StopWatch
 from spike_lib.maths import *
@@ -169,10 +169,11 @@ class Drive:
         - speed: speed in deg/s
         - backwards: if True, moves backwards
         - background: if True, runs in background'''
-        self.robot.addTask(self.toPosGen(pos, speed = speed, backwards = backwards, turn = turn, tolerance = tolerance, extraDist = extraDist, background=background, connect=connect))
         if not background:
             for _ in self.toPosGen(pos, speed = speed, backwards = backwards, turn = turn, tolerance = tolerance, extraDist = extraDist, background=background, connect=connect):
                 self.robot.runTasks()
+        else: 
+            self.robot.addTask(self.toPosGen(pos, speed = speed, backwards = backwards, turn = turn, tolerance = tolerance, extraDist = extraDist, background=background, connect=connect))
 
     def toPosGen(self, pos: vec2, speed = 1000, backwards = False, turn = True, tolerance = 0, extraDist = 0, background = False, connect = [False, False]):
         #work in progress
@@ -487,10 +488,26 @@ class Ride:
     def appendMission(self, mission: Mission):
         self.missions.append(mission)
 
-def rideManager(rides: set):
-    rides = {ride: ride.color for ride in rides}
-    
+def rideManager(rides: set, La, Ra, colorSensor: ColorSensor):
+    def scanForArm():
+        while 1:
+            La.run_angle(400, 45, Stop.HOLD, False)
+            Ra.run_angle(400, 45, Stop.HOLD, True)
+            color = colorSensor.color() 
+            if color != Color.NONE: break
+            wait(150)
+            La.run_angle(400, 45, Stop.HOLD, False)
+            Ra.run_angle(400, 45, Stop.HOLD, True)
+            if color != Color.NONE: break
+            wait(150)
+        for ride in rides:
+            if ride.color == color:
+                return ride
+        return None
+        
     while True:
-        pass
+        scan = scanForArm()
+        if scan != None:
+            scan.run()
     
 

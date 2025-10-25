@@ -2,7 +2,7 @@ from spike_lib.robot import *
 
 rides = {}
 
-hub = PrimeHub()
+hub = PrimeHub(front_side=Axis.Y)
 Lw = Motor(Port.B, Direction.COUNTERCLOCKWISE)
 Rw = Motor(Port.C, Direction.CLOCKWISE)
 RA = Motor(Port.F, Direction.CLOCKWISE)
@@ -16,7 +16,7 @@ drive = Drive(robot, Lw, Rw, wheel_diameter=56, axle_track=96)
 
 mlaticka = Mlaticka(robot, LA, RA)
 
-# mlaticka.align()
+mlaticka.align()
 mlaticka.mlaceni(2)
 mlaticka.turnGear(500)
 mlaticka.ejectFlag()

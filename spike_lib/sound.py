@@ -45,10 +45,4 @@ class Sound:
 
     def beep(self, frequency=440, duration=100):
         self.hub.speaker.beep(frequency, duration)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
