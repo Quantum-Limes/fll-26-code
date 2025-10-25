@@ -148,3 +148,6 @@ def angleDiff(a, b):
     while diff < -pi:
         diff += 2 * pi
     return diff
+
+def raiseError(message: str, exceptionType=Exception):
+    raise exceptionType(message)

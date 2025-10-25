@@ -4,6 +4,7 @@ from pybricks.parameters import Port, Button, Color, Direction, Stop
 from pybricks.robotics import DriveBase
 from pybricks.tools import wait, StopWatch
 from spike_lib.maths import *
+from spike_lib.sound import Sound
 
 
 class Robot:
@@ -11,6 +12,7 @@ class Robot:
     def __init__(self, hub: PrimeHub):
         self.hub = hub
         self.tasks = []
+        self.sound = Sound(hub)
 
     def isTasksRunning(self, numOfTasks = 0):
         if len(self.tasks) > numOfTasks:
@@ -77,7 +79,7 @@ class Drive:
         self.avrMotorAngle = 0
     
 
-    
+
     def getMotorAngle(self):
         avrMotorAngle = average(*[motor.angle() for motor in self.motors])
         diff = avrMotorAngle - self.avrMotorAngle
@@ -375,8 +377,53 @@ class SupperArm:
         liftSpeed = 0
         return liftAngle, rotationAngle, liftSpeed, rotationSpeed
 
-class SkratArm:
-    def __init__(self, liftMotor, rotationMotor):
-        self.liftMotor = liftMotor
+class Arm:
+    def __init__(self, leftMotor: Motor, rightMotor: Motor, color: Color ):
+        self.color = color if color != None or Color.NONE else raiseError("Arm color must be specified!", ValueError)
+        self.leftMotor = leftMotor
+        self.rightMotor = rightMotor
+
+class SuperArm(Arm):
+    def __init__(self, rotationMotor: Motor, liftMotor: Motor, color: Color ):
+        super().__init__(self, leftMotor=liftMotor, rightMotor=liftMotor, color=color)
         self.rotationMotor = rotationMotor
+        self.liftMotor = liftMotor
+
+    def align(self):
+        self.liftMotor.run_until_stalled(200, then=Stop.HOLD, wait=False)
+        self.rotationMotor.run_until_stalled(200, then=Stop.HOLD, wait=True)
+        self.liftMotor.reset_angle(0)
+        self.rotationMotor.reset_angle(-90)
+
+    def rotateByWait(self, angle):
+        self.rotationMotor.run_angle(200, angle/2*-1, then=Stop.HOLD, wait=False)
+        self.liftMotor.run_angle(1/3, angle*3, then=Stop.HOLD, wait=True)
+
+    def liftByWait(self, angle):
+        self.liftMotor.run_angle(200, angle*3, then=Stop.HOLD, wait=True)
+
+    def rotateBy(self, angle):
+        self.rotationMotor.run_angle(200, angle/2*-1, then=Stop.HOLD, wait=False)
+        self.liftMotor.run_angle(1/3, angle*3, then=Stop.HOLD, wait=False)
+
+    def liftBy(self, angle):
+        self.liftMotor.run_angle(200, angle*3, then=Stop.HOLD, wait=False)
+
+    def goTo(self, liftAngle, rotationAngle):
+        self.rotationMotor.run_angle(200, self.rotationMotor.angle - rotationAngle, then=Stop.HOLD, wait=False)
+        self.liftMotor.run_angle(200, self.liftMotor.angle - liftAngle, then=Stop.HOLD, wait=True)
+
+class LiftArm(Arm):
+    def __init__(self, liftMotor: Motor, stuffMotor: Motor, color: Color ):
+        super().__init__(self, leftMotor=liftMotor, rightMotor=liftMotor, color=color)
+        self.liftMotor = liftMotor
+        self.stuffMotor = stuffMotor
+        self.liftAmount = 0
+        self.stuffGone = False
     
+    def align(self):
+        self.liftMotor.run_until_stalled(200, then=Stop.HOLD, wait=False)
+        self.stuffMotor.run_until_stalled(200, then=Stop.HOLD, wait=True)
+        self.liftAmount = 0
+        self.liftMotor.reset_angle(0)
+        self.stuffGone = False

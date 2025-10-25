@@ -6,7 +6,7 @@
       "type": "debugpy",
       "request": "launch",
       "module": "pybricksdev",
-      "args": ["run", "ble", "controller.py"]
+      "args": ["run", "ble", "soundtest.py"]
     }
   ]
 }
