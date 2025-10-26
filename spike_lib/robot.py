@@ -488,7 +488,7 @@ class Ride:
     def appendMission(self, mission: Mission):
         self.missions.append(mission)
 
-def rideManager(rides: set, La, Ra, colorSensor: ColorSensor):
+def rideManager(rides: set, La, Ra, colorSensor: ColorSensor, hub):
     def scanForArm():
         while 1:
             La.run_angle(400, 45, Stop.HOLD, False)
@@ -508,6 +508,8 @@ def rideManager(rides: set, La, Ra, colorSensor: ColorSensor):
     while True:
         scan = scanForArm()
         if scan != None:
+            confirmed = 0
+            while not confirmed: confirmed = True if hub.buttons.pressed()[Button.CENTER] else False
             scan.run()
     
 
