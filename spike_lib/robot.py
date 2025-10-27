@@ -58,38 +58,40 @@ class Drive:
         self.setMotorsToDef()
         self.orientationReset()
         self.drive_settings = {
-            "default": {"straight_speed": 500, "straight_acceleration": 1, "turn_rate": 200, "turn_acceleration": 500},
-            "fast": {"straight_speed": 1000, "straight_acceleration": 2, "turn_rate": 400, "turn_acceleration": 1000},
-            "precise": {"straight_speed": 200, "straight_acceleration": 0.5, "turn_rate": 100, "turn_acceleration": 200}
+            "default": {"straight_speed": 500, "turning_speed": 200, "min_speed": 50, "boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 2},
+            "fast": {"straight_speed": 1000, "turning_speed": 400, "min_speed": 50,"boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 10},
+            "precise": {"straight_speed": 300, "turning_speed": 200, "min_speed": 50,"boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 1}
         }
+        self.setSettings("default")
 
     #some kind of motor controler functions?  - move to class above partly...
-    def set_drive_settings(self, mode):
-        return 1000
-#        if mode in self.drive_settings:
-#            settings = self.drive_settings[mode]
-#            self.driveBase.settings(settings["straight_speed"], settings["straight_acceleration"], settings["turn_rate"], settings["turn_acceleration"])
-#        else:
-#            print(f"Drive mode '{mode}' not found.")
+    def setSettings(self, mode):
+        if mode in self.drive_settings:
+            self.settings = self.drive_settings[mode]
+        else:
+            print(f"Drive mode '{mode}' not found.")
 
+    #motor control
     def setMotorsToDef(self):
+        """resets motor angle"""
         for motor in self.motors:
             motor.reset_angle()
         self.avrMotorAngle = 0
-    
-
 
     def getMotorAngle(self):
+        """returns motor angle difference from the last call and resects the average motor angle value"""
         avrMotorAngle = average(*[motor.angle() for motor in self.motors])
         diff = avrMotorAngle - self.avrMotorAngle
         self.avrMotorAngle = avrMotorAngle
         return diff
 
     def motorsDrive(self, leftSpeed, rightSpeed):
+        """is sets driving speed of both motors to given values"""
         self.leftMotor.run(leftSpeed)
         self.rightMotor.run(rightSpeed)
 
     def motorsStop(self):
+        """stops and holds both motors"""
         for motor in self.motors:
             motor.hold()
 
@@ -122,112 +124,109 @@ class Drive:
     
     
     #gyro contol
-    def orientationReset(self):
-        self.hub.imu.reset_heading(0)
+    def orientationReset(self, value: float = 0):
+        """Resets the orientation to given value (works with mathematical directoin)"""
+        self.hub.imu.reset_heading(-value)
 
     def getOrientation(self):
+        """returns current orientation in degrees (mathematical direction)"""
         return -self.hub.imu.heading() #to make maths work
 
     #localization centre
     def updateLocation(self, pos: vec2, angle: float):
-        '''Parameters:
+        '''manual position update
+        Parameters:
         - pos: vec2 position in mm!
         - angle: orientation in degrees!'''
         self.pos = pos
         self.orientation = angle
 
     def locate(self):
+        """automatic position update"""
         orientation = self.getOrientation()
         length = self.getMotorAngle()*(self.wheelCircumference/360)
         self.updateLocation(self.pos + vec2_polar(vec2(length,0), radians(orientation)), orientation)
 
+    #speed calculators ats
+    def getSpeed(self, length, stop, straightSpeed, minSpeed, brakeDist):
+        if stop:
+            speed = clamp(length / brakeDist * straightSpeed, minSpeed, straightSpeed)
+        else:
+            speed = straightSpeed
+        return speed
+    
+    def gyroCorection(self, speed, aimAngle, currentAngle, turningSpeed, boundaryAngle):
+        deviation = clamp(angleDiff(aimAngle, currentAngle)/boundaryAngle, -1, 1)
+        straightSpeed = (1-fabs(deviation)) * speed
+        sideSpeed = deviation * turningSpeed
+        L_speed = straightSpeed + sideSpeed
+        R_speed = straightSpeed - sideSpeed
+        return L_speed, R_speed
+    
+    def getMotorSpeeds(self, length, aimAngle, currentAngle, stop):
+        return self.gyroCorection(
+            self.getSpeed(length, stop, self.settings["straight_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference), 
+            aimAngle, currentAngle, self.settings["turning_speed"], self.settings["boundary_angle"])
+
     #drive base core
-    def moveDistance(self, distance, speed = 1000, backwards = False, background = False):
+    def moveDistance(self, distance, backwards = False, stop = True, wait = True):
         '''Moves the robot a certain distance in mm.
         Parameters:
         - distance: distance in mm
         - speed: speed in deg/s
         - backwards: if True, moves backwards
-        - background: if True, runs in background'''
+        - stop: if True, stops at the end (for connectivity)
+        - wait: (backgrond) if True, runs in background'''
         self.locate()
-        self.movePolar(distance, self.orientation, speed, backwards, background)
+        self.movePolar(distance, self.orientation, backwards, stop, wait)
 
-    def movePolar(self, length, orientaton, speed = 1000, backwards = False, background = False):
+    def movePolar(self, length, orientaton, backwards = False, stop = True, wait = True):
         '''Moves the robot a certain distance in certain direction.
         Parameters:
         - distance: distance in mm
         - orientaton: orientation in degrees
         - speed: speed in deg/s
         - backwards: if True, moves backwards
-        - background: if True, runs in background'''
-        self.moveToPos(self.pos + vec2_polar(vec2(length, 0), radians(orientaton)), speed, backwards, background=background)
+        - stop: if True, stops at the end (for connectivity)
+        - wait: (backgrond) if True, runs in background'''
+        self.moveToPos(self.pos + vec2_polar(vec2(length, 0), radians(orientaton)), backwards, stop, wait)
 
-    def moveToPos(self, pos, speed = 1000, backwards = False, stop = True, turn = True, tolerance = 0, extraDist = 10, background=False, connect = [False, False]):
+    def moveToPos(self, pos, backwards = False, stop = True, wait = True):
         '''Moves the robot to certain position.
         Parameters:
         - position: vec2 position in mm
         - speed: speed in deg/s
         - backwards: if True, moves backwards
-        - background: if True, runs in background'''
-        if not background:
-            for _ in self.toPosGen(pos, speed = speed, backwards = backwards, turn = turn, tolerance = tolerance, extraDist = extraDist, background=background, connect=connect):
+        - stop: if True, stops at the end (for connectivity)
+        - wait: (backgrond) if True, runs in background'''
+        if wait:
+            for _ in self.toPosGen(pos, backwards = backwards, stop = stop):
                 self.robot.runTasks()
         else: 
-            self.robot.addTask(self.toPosGen(pos, speed = speed, backwards = backwards, turn = turn, tolerance = tolerance, extraDist = extraDist, background=background, connect=connect))
+            self.robot.addTask(self.toPosGen(pos, backwards = backwards, stop = stop))
 
-    def toPosGen(self, pos: vec2, speed = 1000, backwards = False, turn = True, tolerance = 0, extraDist = 0, background = False, connect = [False, False]):
-        #work in progress
-        
-        #nemám tušení co to má dělat (ale vím, že to nedělá)    
-        #hej to muzem smazat, nikde to nepouzivame, jen v tom nad tim
-        #to nad tim je jízda rovně (důležité), ale tenhle kousek je asi k ničemu
-        #no toto vyuzivame na jako ten generator (yield), a to nad tim to proste jen prida do tasklistu
-        #jo, ale já mluvím o taditom turn whatever 
-        # jo toto, 
-        #opraveno
-        #taky moznost :)
+    def toPosGen(self, pos: vec2, backwards, stop):
+        if backwards:
+            dir = -1
+        else:
+            dir = 1
         
         onPos = False
-        tolerance = 5 #mm
         while not onPos:
             self.locate() #not ideal for sensor spaming
-            trajectory = pos - self.pos
+            trajectory = (pos - self.pos) * dir
             print(pos, self.pos, trajectory)
             angle = trajectory.orientation()
             length = trajectory.length()
 
-            speeds = self.calculateMotorDirection(length, angle, radians(self.orientation))
-
+            speeds = self.getMotorSpeeds(length, angle, radians(self.orientation), stop)
+        
             self.motorsDrive(speeds[0], speeds[1])
-            if fabs(length) <= tolerance:
+            if fabs(length) <= self.settings["tolerance"]:
                 onPos = True
             yield
-        if not connect[1]:
+        if not stop:
             self.motorsStop()
-
-    def calculateMotorDirection(self, length, aimAngle, currentAngle):
-        g_cons = 1000
-        print(length)
-        c_speed = clamp(length/self.wheelCircumference, 1, -1) * 900
-        gCor = self.angleDiff(aimAngle, currentAngle) * g_cons
-        L_speed = c_speed + gCor
-        R_speed = c_speed - gCor
-        return L_speed, R_speed
-
-    def calcDir(self, pos, length, speed, offsetAngle, backwards = False, extraDist = 0): #odpad
-        a2 = (self.robot.hub.angleRad()-offsetAngle) % (2*pi)
-        pos = vec2(length + extraDist - pos.x, -pos.y)
-        a1 = atan2(pos.y, pos.x) % (2*pi)
-        angle = (a2 - a1 + pi) % (2*pi) - pi
-        speedM = speed * minV(1-(fabs(angle)*self.turnCoeff),-1.0)**1
-        if(backwards):
-            speed, speedM = -speedM, -speed
-        mult = 1/(fabs(angle)*0+1)
-        if sign(angle) > 0:
-            self.robot.setSpeed(speed*mult, speedM*mult)
-        else:
-            self.robot.setSpeed(speedM*mult, speed*mult)
-    
 
     def circle(self, center, circlePercentage, speed = 1000):
         angle = asin((center - self.robot.pos).normalize().y) - sign(circlePercentage)*pi*0.5
@@ -249,22 +248,6 @@ class Drive:
             else:
                 self.robot.setSpeed(aspeed*ratio, aspeed)
         self.robot.stop(self.brake)
-
-
-    def calcSpeed(self, pos, length, speed, connect = [False, False]):
-        if self.cStart == self.cFinish:
-            accSpeed = speed
-            deaccSpeed = speed
-            
-            if not connect[0]:
-                accSpeed = fabs(pos.x) * self.acc + self.defspeed
-            if not connect[1]:
-                deaccSpeed = fabs(length - pos.x) * self.deacc + self.defspeed
-        else:
-            accSpeed =  (self.robot.pos - self.cStart).length() * self.cAcc + self.defspeed
-            deaccSpeed = (self.robot.pos - self.cFinish).length() * self.cDeacc + self.defspeed
-        return clamp(fabs(maxV(deaccSpeed,accSpeed)), self.defspeed ,speed)
-
 
     def rotate(self, angle, speed = 1000, background = False):
         self.rotateRad(angle/180 * pi, speed = speed, background=background)

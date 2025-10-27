@@ -60,3 +60,31 @@ def close(self, background = False): #not shure
                 yield
         else:
             self.rotateRad(angle)
+
+def calcDir(self, pos, length, speed, offsetAngle, backwards = False, extraDist = 0): #odpad
+    a2 = (self.robot.hub.angleRad()-offsetAngle) % (2*pi)
+    pos = vec2(length + extraDist - pos.x, -pos.y)
+    a1 = atan2(pos.y, pos.x) % (2*pi)
+    angle = (a2 - a1 + pi) % (2*pi) - pi
+    speedM = speed * minV(1-(fabs(angle)*self.turnCoeff),-1.0)**1
+    if(backwards):
+        speed, speedM = -speedM, -speed
+    mult = 1/(fabs(angle)*0+1)
+    if sign(angle) > 0:
+        self.robot.setSpeed(speed*mult, speedM*mult)
+    else:
+        self.robot.setSpeed(speedM*mult, speed*mult)
+
+def calcSpeed(self, pos, length, speed, connect = [False, False]):
+    if self.cStart == self.cFinish:
+        accSpeed = speed
+        deaccSpeed = speed
+        
+        if not connect[0]:
+            accSpeed = fabs(pos.x) * self.acc + self.defspeed
+        if not connect[1]:
+            deaccSpeed = fabs(length - pos.x) * self.deacc + self.defspeed
+    else:
+        accSpeed =  (self.robot.pos - self.cStart).length() * self.cAcc + self.defspeed
+        deaccSpeed = (self.robot.pos - self.cFinish).length() * self.cDeacc + self.defspeed
+    return clamp(fabs(maxV(deaccSpeed,accSpeed)), self.defspeed ,speed)
