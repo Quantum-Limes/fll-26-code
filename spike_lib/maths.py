@@ -53,7 +53,7 @@ class vec2:
         return sqrt(self.x**2 + self.y**2)
     
     def normalized(self):
-        """Normalize the vector to have a length of 1."""
+        """Normalize the vector to have a length of 1. -> unit vector, not normal vector"""
         l = self.length()
         if l == 0:
             return vec2(0, 0)
@@ -122,7 +122,7 @@ class mat2:
 
 def vec2_polar(length: vec2, orientaton: float):
     '''Create a vec2 from polar coordinates.'''
-    return mat2.rotation(radians(orientaton)) * length
+    return mat2.rotation(orientaton) * length
 
 def minV(*values):
     minValue = values[0]

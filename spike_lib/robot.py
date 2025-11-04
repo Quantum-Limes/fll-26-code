@@ -54,13 +54,14 @@ class Drive:
         self.motors = [self.leftMotor, self.rightMotor]
         self.driveBase = DriveBase(self.leftMotor, self.rightMotor, wheel_diameter, axle_track)
         self.wheelCircumference = wheel_diameter * pi # pls dej to do ajiny, nvm jak se to rekne
+        self.axleTrack = axle_track
         self.updateLocation(vec2(0,0), 0)
         self.setMotorsToDef()
         self.orientationReset()
         self.drive_settings = {
-            "default": {"straight_speed": 500, "turning_speed": 200, "min_speed": 50, "boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 2},
-            "fast": {"straight_speed": 1000, "turning_speed": 400, "min_speed": 50,"boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 10},
-            "precise": {"straight_speed": 300, "turning_speed": 200, "min_speed": 50,"boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 1}
+            "default": {"straight_speed": 1000, "turning_speed": 200, "min_speed": 50, "boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 1, "angle_tolerance": pi/200},
+            "smooth": {"straight_speed": 1000, "turning_speed": 300, "min_speed": 50,"boundary_angle": pi/4, "straight_acceleration": 1, "tolerance": 1, "angle_tolerance": pi/200},
+            "precise": {"straight_speed": 300, "turning_speed": 200, "min_speed": 50,"boundary_angle": pi/4, "straight_acceleration": 1, "tolerance": 1, "angle_tolerance": pi/200}
         }
         self.setSettings("default")
 
@@ -75,7 +76,7 @@ class Drive:
     def setMotorsToDef(self):
         """resets motor angle"""
         for motor in self.motors:
-            motor.reset_angle()
+            motor.reset_angle(0)
         self.avrMotorAngle = 0
 
     def getMotorAngle(self):
@@ -146,11 +147,12 @@ class Drive:
         orientation = self.getOrientation()
         length = self.getMotorAngle()*(self.wheelCircumference/360)
         self.updateLocation(self.pos + vec2_polar(vec2(length,0), radians(orientation)), orientation)
+        #print(self.pos, self.orientation, length)
 
     #speed calculators ats
     def getSpeed(self, length, stop, straightSpeed, minSpeed, brakeDist):
         if stop:
-            speed = clamp(length / brakeDist * straightSpeed, minSpeed, straightSpeed)
+            speed = clamp(fabs(length) / brakeDist * straightSpeed, minSpeed, straightSpeed)*sign(length)
         else:
             speed = straightSpeed
         return speed
@@ -159,8 +161,8 @@ class Drive:
         deviation = clamp(angleDiff(aimAngle, currentAngle)/boundaryAngle, -1, 1)
         straightSpeed = (1-fabs(deviation)) * speed
         sideSpeed = deviation * turningSpeed
-        L_speed = straightSpeed + sideSpeed
-        R_speed = straightSpeed - sideSpeed
+        L_speed = (straightSpeed - sideSpeed)
+        R_speed = (straightSpeed + sideSpeed)
         return L_speed, R_speed
     
     def getMotorSpeeds(self, length, aimAngle, currentAngle, stop):
@@ -169,7 +171,7 @@ class Drive:
             aimAngle, currentAngle, self.settings["turning_speed"], self.settings["boundary_angle"])
 
     #drive base core
-    def moveDistance(self, distance, backwards = False, stop = True, wait = True):
+    def moveDistance(self, distance, stop = True, wait = True):
         '''Moves the robot a certain distance in mm.
         Parameters:
         - distance: distance in mm
@@ -178,7 +180,8 @@ class Drive:
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''
         self.locate()
-        self.movePolar(distance, self.orientation, backwards, stop, wait)
+        backwards = True if distance < 0 else False
+        self.movePolar(fabs(distance), self.orientation, backwards, stop, wait)
 
     def movePolar(self, length, orientaton, backwards = False, stop = True, wait = True):
         '''Moves the robot a certain distance in certain direction.
@@ -189,7 +192,7 @@ class Drive:
         - backwards: if True, moves backwards
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''
-        self.moveToPos(self.pos + vec2_polar(vec2(length, 0), radians(orientaton)), backwards, stop, wait)
+        self.moveToPos(self.pos + vec2_polar(vec2(length, 0), radians(orientaton) + pi if backwards else 0), backwards, stop, wait)
 
     def moveToPos(self, pos, backwards = False, stop = True, wait = True):
         '''Moves the robot to certain position.
@@ -208,36 +211,72 @@ class Drive:
     def toPosGen(self, pos: vec2, backwards, stop):
         if backwards:
             dir = -1
+            angleOffset = pi
         else:
             dir = 1
+            angleOffset = 0
         
         onPos = False
         while not onPos:
             self.locate() #not ideal for sensor spaming
-            trajectory = (pos - self.pos) * dir
-            print(pos, self.pos, trajectory)
-            angle = trajectory.orientation()
-            length = trajectory.length()
+            trajectory = (pos - self.pos)
+            angle = angleDiff(trajectory.orientation(), angleOffset)
+            length = trajectory.length() * dir
 
             speeds = self.getMotorSpeeds(length, angle, radians(self.orientation), stop)
+            #print(f"Trajectory x: {round(trajectory.x)}, y: {round(trajectory.y)}, Distance: {round(length)}, Angle: {round(degrees(angle))}, speed L: {round(speeds[0])}, R: {round(speeds[1])}")
         
             self.motorsDrive(speeds[0], speeds[1])
             if fabs(length) <= self.settings["tolerance"]:
                 onPos = True
+                break
             yield
         if not stop:
             self.motorsStop()
 
-    def circle(self, center, circlePercentage, speed = 1000):
-        angle = asin((center - self.robot.pos).normalize().y) - sign(circlePercentage)*pi*0.5
+    def turn(self, angle, stop = True, wait = True): #work in progress
+        '''Turns the robot to certain orientation.
+        Parameters:
+        - angle: orientation in degrees
+        - speed: speed in deg/s
+        - backwards: if True, turns the other way
+        - stop: if True, stops at the end (for connectivity)
+        - wait: (backgrond) if True, runs in background'''
+        self.turnCurve(angle, radius=0, stop=stop, wait=wait)
+    
+    def turnCurve(self, angle, radius, stop = True, wait = True):
+        """Advancer curved turning (not on spot)"""
+        if wait:
+            for _ in self.turnCurveGen(angle, radius, stop):
+                self.robot.runTasks()
+        else:
+            self.robot.addTask(self.turnCurveGen(angle, radius, stop))
+
+    def turnCurveGen(self, angle, radius, stop = True):
+        lRad = (radius + self.axleTrack*0.5)
+        rRad = (radius - self.axleTrack*0.5)
+        speedRatio = lRad / rRad #left/right
+        while True:
+            self.locate()
+            angleD = self.angleDiff(radians(self.orientation), radians(angle))
+            lDistance = angleD * lRad
+            rDistance = angleD * rRad
+            speed = self.getSpeed(lDistance + rDistance, stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
+            self.motorsDrive(speed, speed*speedRatio)
+            if fabs(angleD) <= self.settings["angle_tolerance"]:
+                break
+        pass
+
+    def circle(self, center: vec2, circlePercentage, speed = 1000):
+        angle = asin((center - self.pos).normalize().y) - sign(circlePercentage)*pi*0.5
         self.rotateRad(angle)
-        finalPos = mat2.rotation(2*pi*circlePercentage)*(self.robot.pos - center) + center
-        r = (self.robot.pos - center).length()
-        ratio = (r-self.robot.axle*0.5)/(r+self.robot.axle*0.5)
+        finalPos = mat2.rotation(2*pi*circlePercentage)*(self.pos - center) + center
+        r = (self.pos - center)
+        ratio = (r-self.axleTrack*0.5)/(r+self.axleTrack*0.5)
         side = -sign(circlePercentage)
         startPos = self.robot.pos
         
-        length = abs(r*self.angleDiff((startPos - center).xAngle(), (finalPos - center).xAngle()))
+        length = abs(r*self.angleDiff((startPos - center).orientation(), (finalPos - center).xAngle()))
         apos = length
         while(apos > 0.5):
             apos = abs(r*self.angleDiff((self.robot.pos - center).xAngle(), (finalPos - center).xAngle()))
