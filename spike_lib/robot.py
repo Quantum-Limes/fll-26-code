@@ -38,7 +38,6 @@ class Robot:
 class MotorControl: #AI trash (create new)
     def __init__(self, motor: Motor):
         self.motor = motor
-
     def run(self, speed):
         self.motor.run(speed)
 
@@ -234,7 +233,7 @@ class Drive:
         if not stop:
             self.motorsStop()
 
-    def turn(self, angle, stop = True, wait = True): #work in progress
+    def turn(self, angle: int, stop = True, wait = True): #work in progress
         '''Turns the robot to certain orientation.
         Parameters:
         - angle: orientation in degrees
@@ -255,16 +254,20 @@ class Drive:
     def turnCurveGen(self, angle, radius, stop = True):
         lRad = (radius + self.axleTrack*0.5)
         rRad = (radius - self.axleTrack*0.5)
-        speedRatio = lRad / rRad #left/right
+        lRatio = lRad / rRad #left/right
+        rRatio = rRad / lRad #right/left
         while True:
             self.locate()
             angleD = self.angleDiff(radians(self.orientation), radians(angle))
             lDistance = angleD * lRad
             rDistance = angleD * rRad
             speed = self.getSpeed(lDistance + rDistance, stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
-            self.motorsDrive(speed, speed*speedRatio)
+            self.motorsDrive(speed*lRatio, speed*rRatio)
+            print(f"AngleD: {degrees(angleD)}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
+
             if fabs(angleD) <= self.settings["angle_tolerance"]:
                 break
+            yield
         pass
 
     def circle(self, center: vec2, circlePercentage, speed = 1000):
@@ -449,24 +452,25 @@ class Mlaticka(Arm):
         self.holderMotor  = holderMotor
 
     def align(self):
-        self.mlaticiMotor.run_until_stalled(-self.speed, Stop.HOLD, False)
-        self.holderMotor.run_until_stalled(self.speed, Stop.HOLD, True)
-        self.mlaticiMotor.reset_angle(68)
-        self.holderMotor.reset_angle(180)
+        self.mlaticiMotor.run_until_stalled(self.speed, Stop.HOLD, 60)
+        self.holderMotor.run_until_stalled(-self.speed, Stop.HOLD, 60)
+        self.mlaticiMotor.reset_angle(0)
+        self.holderMotor.reset_angle(-180*5.5)
     
     def mlaceni(self, count: int):
+        self.mlaticiMotor.run_target(self.speed, 0, Stop.HOLD, True)
         for i in range(count):
             self.mlaticiMotor.run_angle(400, -90, Stop.HOLD, True)
             self.mlaticiMotor.run_angle(self.speed, 90, Stop.HOLD, True)
 
     def mlaceniAngle(self, angle: int, waitBool: bool=True):
-       self.mlaticiMotor.run_angle(self.speed, angle, Stop.HOLD, wait=waitBool)
+       self.mlaticiMotor.run_target(self.speed, -angle, Stop.HOLD, wait=waitBool)
        
     def turnGear(self, angle: int, waitBool: bool=True):
-        self.holderMotor.run_angle(self.speed, angle, Stop.HOLD, wait=waitBool)
+        self.holderMotor.run_target(self.speed, -angle, Stop.HOLD, wait=waitBool)
 
     def ejectFlag(self):
-        self.holderMotor.run_angle(self.speed, 50, Stop.HOLD, wait=True)
+        self.holderMotor.run_target(self.speed, -30, Stop.HOLD, wait=True)
 
         # self.liftMotor.run_until_stalled(200, then=Stop.HOLD, wait=False)
         # self.stuffMotor.run_until_stalled(200, then=Stop.HOLD, wait=True)
@@ -476,7 +480,7 @@ class Mlaticka(Arm):
         # self.stuffMotor.reset_angle(0)
         
 
-        
+
 class Mission:
     def __init__(self, pos: vec2, rot: float, run: function):
         self.run = run
