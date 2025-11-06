@@ -88,3 +88,147 @@ def calcSpeed(self, pos, length, speed, connect = [False, False]):
         accSpeed =  (self.robot.pos - self.cStart).length() * self.cAcc + self.defspeed
         deaccSpeed = (self.robot.pos - self.cFinish).length() * self.cDeacc + self.defspeed
     return clamp(fabs(maxV(deaccSpeed,accSpeed)), self.defspeed ,speed)
+
+#zatím k ničemu
+    def turnMotorRad(self, deviceID, angle:float, speed = 1000, background = False, simple = False, time = 0):
+        if background:
+            self.robot.addTask(self.turnMotorRadGen(deviceID, angle, speed = speed, simple=simple, time = time))
+        else:
+            for _ in self.turnMotorRadGen(deviceID, angle, speed = speed, simple=simple, time = time):
+                self.robot.runTasks()
+                pass
+    
+    def turnMotorRadGen(self, deviceID: int, angle:float, speed = 1000, simple = False, time = 0):
+        dif = self.angleDiff(radians(self.motors[deviceID].angle()), angle, simple=simple)
+        doTime = True
+        if time == 0:
+            doTime = False
+        
+        while fabs(dif) > self.tolDiff*2 and (time > 0 or not doTime): #have no faith in this (there will be an error)
+            dif = self.angleDiff(radians(self.motors[deviceID].angle()), angle, simple=simple)
+            self.motors[deviceID].run(sign(dif) * clamp(speed*abs(dif)*0.5,110,200))
+            time -= 1
+            yield
+        self.motors[deviceID].hold()
+        if time == 0:
+            print("lol")
+
+    def turnMotor(self, deviceID, angle:float, speed = 1000, background = False, simple = False, time = 0):
+        self.turnMotorRad(deviceID, angle/180 * pi, speed=speed, background=background, simple=simple, time=time)
+
+    def circle(self, center: vec2, circlePercentage, speed = 1000):
+        angle = asin((center - self.pos).normalize().y) - sign(circlePercentage)*pi*0.5
+        self.rotateRad(angle)
+        finalPos = mat2.rotation(2*pi*circlePercentage)*(self.pos - center) + center
+        r = (self.pos - center)
+        ratio = (r-self.axleTrack*0.5)/(r+self.axleTrack*0.5)
+        side = -sign(circlePercentage)
+        startPos = self.robot.pos
+        
+        length = abs(r*self.angleDiff((startPos - center).orientation(), (finalPos - center).xAngle()))
+        apos = length
+        while(apos > 0.5):
+            apos = abs(r*self.angleDiff((self.robot.pos - center).xAngle(), (finalPos - center).xAngle()))
+            aspeed = self.calcSpeed(vec2(length-apos,0), length, speed) + 100
+            self.robot.update()
+            if side > 0:
+                self.robot.setSpeed(aspeed, aspeed*ratio)
+            else:
+                self.robot.setSpeed(aspeed*ratio, aspeed)
+        self.robot.stop(self.brake)
+
+    def rotate(self, angle, speed = 1000, background = False):
+        self.rotateRad(angle/180 * pi, speed = speed, background=background)
+    
+    def rotateRad(self, angle, speed = 1000, background = False):
+        if background:
+            self.addTask(self.rotateRadGen(angle, speed))
+        else:
+            for _ in self.rotateRadGen(angle, speed):
+                self.runTasks()
+                pass
+       
+    def rotateRadGen(self, angle, speed = 1000):
+        angleInit = self.robot.hub.angleRad()
+        angleInitD = 0
+        angleD = self.angleDiff(self.robot.hub.angleRad(), angle)
+        if fabs(angleD) <= self.tolDiff:
+            return
+        while fabs(angleD) > self.accuracy:
+            rspeed = self.calcSpeedR(angleD, speed, angleInitD)
+            self.robot.setSpeed(-rspeed*sign(angleD), rspeed*sign(angleD))
+            self.update()
+            angleInitD = self.angleDiff(self.robot.hub.angleRad(), angleInit)
+            angleD = self.angleDiff(self.robot.hub.angleRad(), angle)
+            
+            yield
+        self.robot.stop(self.braker)
+
+    def calcSpeedR(self, angle:float, speed:float, angleInit:float):
+        rspeed = fabs(angle) * self.rdeacc + self.defspeed
+        aspeed = fabs(angleInit) * self.racc + self.defspeed
+        return maxV(maxV(rspeed,aspeed),speed)
+    
+    def angleDiff(self, angle1:float, angle2:float, simple = False):
+        if simple:
+            return angle2 - angle1
+        a1 = (angle1) % (2*pi)
+        a2 = (angle2) % (2*pi)
+        return (a2 - a1 + pi) % (2*pi) - pi
+    
+    
+    def circleToPos(self,pos, speed = 1000, connect = [False, False], accuracy = 0.2, backwards = False, background = False):
+        if background:
+            self.addTask(self.circleToPosGen(pos, speed = speed, connect = connect, accuracy = accuracy, backwards = backwards))
+        else:
+            for _ in self.circleToPosGen(pos, speed = speed, connect = connect, accuracy = accuracy, backwards = backwards):
+                self.runTasks()
+                pass
+    
+    def circleToPosGen(self,pos, speed = 1000, connect = [False, False], accuracy = 0.2, backwards = False):
+        startPos = self.robot.pos
+        if accuracy == 0.2 and connect[1]:
+            accuracy = 13
+        while (self.robot.pos - pos).length() > accuracy:
+            angle = self.robot.hub.angleRad()
+            if backwards:
+                angle = self.angleDiff(0, angle + pi)
+            
+            dir = vec2(cos(angle), sin(angle))
+            dx = pos.x - self.robot.pos
+            dy = pos.y - self.robot.pos.y
+            t=(dx*dir.x + dy*dir.y) / (2*(dy*dir.x - dx*dir.y))
+            center = vec2(0.5*(self.robot.pos.x + pos.x) - t*dy, 0.5*(pos.y + self.robot.pos.y) + t*dx)
+            radius = (pos - center).length()
+            ratio = (radius-self.robot.axle*0.5)/(radius+self.robot.axle*0.5)
+            side = sign((mat2.rotation(-angle+ 0.5*pi) * (pos-self.robot.pos)).x)
+            
+            cSpeed = self.calcSpeedDis(startPos, pos, speed, connect = connect)
+            if backwards:
+                cSpeed = -cSpeed
+                side = -side
+            
+            if side == 1:
+                self.robot.setSpeed(cSpeed, cSpeed*ratio)
+            else:
+                self.robot.setSpeed(cSpeed*ratio, cSpeed)
+            
+            self.robot.update()
+            yield
+        if not connect[1]:
+            self.robot.stop(self.brake)
+
+    
+    def calcSpeedDis(self, startPos, EndPos, speed, connect = [False, False]):
+       
+        disToStart = (startPos - self.robot.pos).length()
+        disToEnd = (EndPos - self.robot.pos).length()
+        rspeed = speed
+        if not connect[0]:
+            rspeed = disToStart * self.acc + self.defspeed
+        if not connect[1]:
+            rspeed = maxV(rspeed, disToEnd * self.deacc + self.defspeed)
+        else:
+            rspeed = maxV(rspeed, disToEnd * self.deacc*3 + self.defspeed)
+        rspeed = maxV(rspeed, speed)
+        return rspeed    

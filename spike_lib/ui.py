@@ -3,7 +3,7 @@ from pybricks.parameters import Button, Color
 from pybricks.tools import wait
 from pybricks.pupdevices import Motor, ColorSensor
 from pybricks.robotics import DriveBase
-from pybricks.geometry import Matrix
+from pybricks.tools import Matrix
 
 # Image data from imgs.py
 beari = Matrix([
