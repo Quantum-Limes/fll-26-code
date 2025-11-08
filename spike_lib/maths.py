@@ -120,8 +120,8 @@ class mat2:
             raise ValueError("Matrix is singular and cannot be inverted.")
         return 1/det * self.adj()
 
-def vec2_polar(length: vec2, orientaton: float):
-    '''Create a vec2 from polar coordinates.'''
+def rotateVec2(length: vec2, orientaton: float):
+    '''rotate vec2 from polar coordinates.'''
     return mat2.rotation(orientaton) * length
 
 def minV(*values):

@@ -56,15 +56,15 @@ class Drive:
         self.hub.imu.reset_heading(-value)
 
     def getOrientation(self):
-        """returns current orientation in degrees (mathematical direction)"""
-        return -self.hub.imu.heading() #to make maths work
+        """returns current orientation in radians (mathematical direction)"""
+        return radians(-self.hub.imu.heading()) #to make maths work
 
     #localization centre
     def updateLocation(self, pos: vec2, angle: float):
         '''manual position update
         Parameters:
         - pos: vec2 position in mm!
-        - angle: orientation in degrees!'''
+        - angle: orientation in radians!'''
         self.pos = pos
         self.orientation = angle
 
@@ -72,7 +72,7 @@ class Drive:
         """automatic position update"""
         orientation = self.getOrientation()
         length = self.getMotorAngle()*(self.wheelCircumference/360)
-        self.updateLocation(self.pos + vec2_polar(vec2(length,0), radians(orientation)), orientation)
+        self.updateLocation(self.pos + rotateVec2(vec2(length,0), orientation), orientation)
         #print(self.pos, self.orientation, length)
 
     #speed calculators ats
@@ -107,7 +107,7 @@ class Drive:
         - wait: (backgrond) if True, runs in background'''
         self.locate()
         backwards = True if distance < 0 else False
-        self.movePolar(fabs(distance), self.orientation, backwards, stop, wait)
+        self.movePolar(fabs(distance), degrees(self.orientation), backwards, stop, wait)
 
     def movePolar(self, length, orientaton, backwards = False, stop = True, wait = True):
         '''Moves the robot a certain distance in certain direction.
@@ -118,7 +118,10 @@ class Drive:
         - backwards: if True, moves backwards
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''
-        self.moveToPos(self.pos + vec2_polar(vec2(length, 0), radians(orientaton) + pi if backwards else 0), backwards, stop, wait)
+        self.locate()
+        pos = self.pos + rotateVec2(vec2(length, 0), radians(orientaton))
+        #print(f"Moving to pos x: {round(pos.x)}, y: {round(pos.y)}, orientaton: {orientaton}, backwards: {backwards}")
+        self.moveToPos(pos, backwards, stop, wait)
 
     def moveToPos(self, pos, backwards = False, stop = True, wait = True):
         '''Moves the robot to certain position.
@@ -149,7 +152,7 @@ class Drive:
             angle = angleDiff(trajectory.orientation(), angleOffset)
             length = trajectory.length() * dir
 
-            speeds = self.getMotorSpeeds(length, angle, radians(self.orientation), stop)
+            speeds = self.getMotorSpeeds(length, angle, self.orientation, stop)
             #print(f"Trajectory x: {round(trajectory.x)}, y: {round(trajectory.y)}, Distance: {round(length)}, Angle: {round(degrees(angle))}, speed L: {round(speeds[0])}, R: {round(speeds[1])}")
         
             self.motorsDrive(speeds[0], speeds[1])
@@ -185,7 +188,7 @@ class Drive:
         rRatio = rRad / lRad #right/left
         while True:
             self.locate()
-            angleD = self.angleDiff(radians(self.orientation), radians(angle))
+            angleD = self.angleDiff(self.orientation, radians(angle))
             lDistance = angleD * lRad
             rDistance = angleD * rRad
             speed = self.getSpeed(lDistance + rDistance, stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
