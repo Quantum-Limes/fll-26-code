@@ -162,8 +162,6 @@ class Drive:
         '''Turns the robot to certain orientation.
         Parameters:
         - angle: orientation in degrees
-        - speed: speed in deg/s
-        - backwards: if True, turns the other way
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''
         self.turnCurve(angle, radius=0, stop=stop, wait=wait)
@@ -181,14 +179,16 @@ class Drive:
         rRad = (radius - self.axleTrack*0.5)
         lRatio = lRad / rRad #left/right
         rRatio = rRad / lRad #right/left
+        angle = radians(angle)
         while True:
             self.locate()
-            angleD = self.angleDiff(self.orientation, radians(angle))
+            angleD = angleDiff(self.orientation, angle)
+            direction = sign(angleD)
             lDistance = angleD * lRad
             rDistance = angleD * rRad
-            speed = self.getSpeed(lDistance + rDistance, stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
-            self.motorsDrive(speed*lRatio, speed*rRatio)
-            print(f"AngleD: {degrees(angleD)}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
+            speed = self.getSpeed(fabs(lDistance) + fabs(rDistance), stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
+            self.motorsDrive(-speed*lRatio*direction, speed*rRatio*direction)
+            print(f"Orientation: {round(degrees(self.orientation))}, angle: {round(degrees(angle))} AngleD: {round(degrees(angleD))}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
 
             if fabs(angleD) <= self.settings["angle_tolerance"]:
                 break
