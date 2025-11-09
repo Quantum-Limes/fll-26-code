@@ -101,25 +101,21 @@ class Drive:
         '''Moves the robot a certain distance in mm.
         Parameters:
         - distance: distance in mm
-        - speed: speed in deg/s
-        - backwards: if True, moves backwards
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''
         self.locate()
-        backwards = True if distance < 0 else False
-        self.movePolar(fabs(distance), degrees(self.orientation), backwards, stop, wait)
+        self.movePolar(distance, degrees(self.orientation), stop, wait)
 
-    def movePolar(self, length, orientaton, backwards = False, stop = True, wait = True):
+    def movePolar(self, distance, orientaton, stop = True, wait = True):
         '''Moves the robot a certain distance in certain direction.
         Parameters:
         - distance: distance in mm
         - orientaton: orientation in degrees
-        - speed: speed in deg/s
-        - backwards: if True, moves backwards
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''
         self.locate()
-        pos = self.pos + rotateVec2(vec2(length, 0), radians(orientaton))
+        pos = self.pos + rotateVec2(vec2(distance, 0), radians(orientaton))
+        backwards = True if distance < 0 else False
         #print(f"Moving to pos x: {round(pos.x)}, y: {round(pos.y)}, orientaton: {orientaton}, backwards: {backwards}")
         self.moveToPos(pos, backwards, stop, wait)
 
@@ -127,7 +123,6 @@ class Drive:
         '''Moves the robot to certain position.
         Parameters:
         - position: vec2 position in mm
-        - speed: speed in deg/s
         - backwards: if True, moves backwards
         - stop: if True, stops at the end (for connectivity)
         - wait: (backgrond) if True, runs in background'''

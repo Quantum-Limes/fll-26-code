@@ -52,17 +52,21 @@ class vec2:
     def length(self):
         return sqrt(self.x**2 + self.y**2)
     
+    def orientation(self):
+        """Calculate the angle of the vector in radians."""
+        return atan2(self.y, self.x)
+
     def normalized(self):
         """Normalize the vector to have a length of 1. -> unit vector, not normal vector"""
         l = self.length()
         if l == 0:
             return vec2(0, 0)
         return self / l
-        
     
-    def orientation(self):
-        """Calculate the angle of the vector in radians."""
-        return atan2(self.y, self.x)
+    def rotated(self, angle: float):
+        """Rotate the vector by a given angle in radians.
+        for some reason not concidered as vector afterwards"""
+        return mat2.rotation(angle) * self
 
 class mat2:
     def __init__(self, a: float, b:float , c:float, d:float):
@@ -120,9 +124,16 @@ class mat2:
             raise ValueError("Matrix is singular and cannot be inverted.")
         return 1/det * self.adj()
 
-def rotateVec2(length: vec2, orientaton: float):
+def rotateVec2(vec: vec2, orientaton: float):
     '''rotate vec2 from polar coordinates.'''
-    return mat2.rotation(orientaton) * length
+    return mat2.rotation(orientaton) * vec
+
+def normalizeVec2(vec: vec2):
+    """Normalize the vector to have a length of 1. -> unit vector, not normal vector"""
+    l = vec.length()
+    if l == 0:
+        return vec2(0, 0)
+    return vec / l
 
 def minV(*values):
     minValue = values[0]
