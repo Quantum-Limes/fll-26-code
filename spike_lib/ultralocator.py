@@ -11,13 +11,13 @@ class UltraLocator:
         distance = self.sensor.distance()  # in mm
         if distance == 2000:  # no reading
             return None
-        return ((vec2(distance, 0)).rotated(self.direction) + self.offset).rotated(orientation)   # in mm
+        return rotateVec2(rotateVec2(vec2(distance, 0), self.direction) + self.offset, orientation)   # in mm
     
     def toWall(self, shift: vec2, wallDirVec2: vec2):
         """from orientation and wall direction vector calculates normal vector of posible location line"""
         if shift is None:
             return None
-        wallNormal = (wallDirVec2.rotated(pi/2)).normalized()
+        wallNormal = normalizeVec2(rotateVec2(wallDirVec2, pi/2))
         return vec2(shift.x * wallNormal.x, shift.y * wallNormal.y)
         
     def updateField(self, recalculate: bool = True):
