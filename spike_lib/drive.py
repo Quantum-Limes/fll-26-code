@@ -188,7 +188,7 @@ class Drive:
             rDistance = angleD * rRad
             speed = self.getSpeed(fabs(lDistance) + fabs(rDistance), stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
             self.motorsDrive(-speed*lRatio*direction, speed*rRatio*direction)
-            print(f"Orientation: {round(degrees(self.orientation))}, angle: {round(degrees(angle))} AngleD: {round(degrees(angleD))}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
+            #print(f"Orientation: {round(degrees(self.orientation))}, angle: {round(degrees(angle))} AngleD: {round(degrees(angleD))}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
 
             if fabs(angleD) <= self.settings["angle_tolerance"]:
                 break
