@@ -175,20 +175,19 @@ class Drive:
             self.robot.addTask(self.turnCurveGen(angle, radius, stop))
 
     def turnCurveGen(self, angle, radius, stop = True):
-        lRad = (radius + self.axleTrack*0.5)
-        rRad = (radius - self.axleTrack*0.5)
+        lRad = fabs(-radius + self.axleTrack*0.5)
+        rRad = fabs(-radius - self.axleTrack*0.5)
         lRatio = lRad / rRad #left/right
         rRatio = rRad / lRad #right/left
         angle = radians(angle)
         while True:
             self.locate()
             angleD = angleDiff(self.orientation, angle)
-            direction = sign(angleD)
             lDistance = angleD * lRad
             rDistance = angleD * rRad
-            speed = self.getSpeed(fabs(lDistance) + fabs(rDistance), stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference)
-            self.motorsDrive(-speed*lRatio*direction, speed*rRatio*direction)
-            #print(f"Orientation: {round(degrees(self.orientation))}, angle: {round(degrees(angle))} AngleD: {round(degrees(angleD))}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
+            speed = self.getSpeed(lDistance + rDistance, stop, self.settings["turning_speed"], self.settings["min_speed"], self.settings["straight_acceleration"]*self.wheelCircumference/2)
+            self.motorsDrive(speed*lRatio, -speed*rRatio)
+            print(f"Orientation: {round(degrees(self.orientation))}, angle: {round(degrees(angle))} AngleD: {round(degrees(angleD))}, lDist: {round(lDistance)}, rDist: {round(rDistance)}, speed {round(speed)}")
 
             if fabs(angleD) <= self.settings["angle_tolerance"]:
                 break
