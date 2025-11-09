@@ -9,7 +9,7 @@ class Arm:
     def align(self):
         pass
 
-class SuperArm(Arm):      #OTESTOVAT CELOU CLASSKU-    Nově RotateTo, RaiseTo, 
+class SuperArm(Arm):      #OTESTOVAT CELOU CLASSKU-    Nově rotateTo, raiseTo, moveTo 
     def __init__(self, rotationMotor: Motor, liftMotor: Motor, color: Color ):
         super().__init__(leftMotor=rotationMotor, rightMotor=liftMotor, color=color)
         self.rotationMotor = rotationMotor
