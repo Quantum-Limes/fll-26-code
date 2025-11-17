@@ -1,6 +1,18 @@
 from spike_lib.drive import *
+class Wall:
+    def __init__(self, a: vec2, b: vec2):
+        self.a = a
+        self.b = b
+        self.dirVec = a - b
+        self.orientation = angleDiff((a - b).orientation(), 0)
+        self.normalVec = normalizeVec2(rotateVec2(a - b, pi/2))
+
+    def move(self, shift: vec2):
+        self.a += shift
+        self.b += shift
+
 class UltraLocator:
-    def __init__(self, drive: Drive, sensor: UltrasonicSensor, direction: float, offset: vec2, field: mat2):
+    def __init__(self, drive: Drive, sensor: UltrasonicSensor, direction: float, offset: vec2):
         """This is advanced aligning tool sutiated for robots operating in enclosed 2D enviroment with ultrasonic sensor in the plane
         drive extension
         Parameters:
@@ -13,24 +25,17 @@ class UltraLocator:
         self.sensor = sensor
         self.direction = radians(direction)  # in degrees
         self.offset = offset  # vec2 in mm
-        self.field = self.setField(vec2(0, 0), vec2(1, 0), vec2(0, 1), vec2(1, 1))
-
-    def getDirVec(self, wall: mat2):
-        return vec2(wall.m[0][0], wall.m[0][1]) - vec2(wall.m[0][0], wall.m[0][1])
-    
-    def getNormalVec(self, dirVec: vec2):
-        return normalizeVec2(rotateVec2(dirVec, pi/2))
+        self.field = self.setField(vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1))
+        self.settings = {"locate_tolerance": 50, "update_tolerance": 10}
 
     def setField(self, a: vec2, b: vec2, c: vec2, d: vec2):
         """sets the field object from corners
         named from down left to right than up"""
-        return [mat2(a.x, a.y, b.x, b.y), mat2(b.x, b.y, c.x, c.y), mat2(c.x, c.y, d.x, d.y), mat2(d.x, d.y, a.x, a.y)]
+        return [Wall(a, b), Wall(b, c), Wall(c, d), Wall(d, a)]
 
     def moveField(self, shift: vec2):
-        field = []
         for wall in self.field:
-            field.append(mat2(wall.m[0][0] + shift[0], wall.m[0][1] + shift[1], wall.m[1][0] + shift[0], wall.m[1][1] + shift[1]))
-        self.field = field
+            wall.move(shift)
 
     def read(self, orientation): #in radians
         distance = self.sensor.distance()  # in mm
@@ -39,29 +44,49 @@ class UltraLocator:
             return None
         return rotateVec2(rotateVec2(vec2(distance, 0), self.direction) + self.offset, orientation)   # in mm
     
-    def calculateToWall(self, pos: vec2, wall: mat2):
-        return self.toWall(pos - vec2(wall.m[0][0], wall.m[0], [1])  - vec2(wall.m[1][0], wall.m[1], [1]), wall)
+    def calculateToWall(self, pos: vec2, wall: Wall):
+        return self.toWall(wall.a - pos, wall)
 
-    def toWall(self, shift: vec2, wall: mat2):
+    def toWall(self, shift: vec2, wall: Wall):
         """from orientation and wall direction vector calculates normal vector of posible location line"""
         if shift is None:
             return None
-        wallNormal = self.getNormalVec(self.getDirVec(wall))
-        return vec2(shift.x * wallNormal.x, shift.y * wallNormal.y)
+        return shift.split(wall.orientation + pi/2)
 
-    def updateField(self, recalculate: bool = True):
-        """This function works with known location and accordingly ajusts the field wall matrix"""
+    def getPosOffset(self, wall: Wall):
         self.drive.locate()
-        wall = self.field[1]
-        offset = self.toWall(self.read(self.drive.orientation), wall) - self.calculateToWall(self.drive.pos, wall)
-        self.drive.pos += offset #not shure, not tested
-                
+        shift = self.read(self.drive.orientation)
+        if shift:
+            return self.toWall(shift, wall) - self.calculateToWall(self.drive.pos, wall)
+        else:
+            return vec2(0, 0)
 
-    def ultraLocate(self):
-        """This function works with known field wall matrix and accordingly ajusts the robot location"""
-        self.drive.locate()
-        wall = self.field[1]
-        offset = self.toWall(self.read(self.drive.orientation), wall) - self.calculateToWall(self.drive.pos, wall)
-        self.moveField(-offset) #not shure, not tested
-        
+    def locateGeneral(self, wall: Wall):
+        """This function works known with wall and accordingly ajusts the robot location"""
+        shift = self.getPosOffset(wall)
+        if shift.length() < self.settings["locate_tolerance"]:
+            self.drive.pos -= shift
+        else:
+            print("ultraLocate failed due unexpected size of shift")    
+
+    def locate(self, wallID: int):
+        """This function works with known wall and accordingly ajusts the robot location"""
+        shift = self.getPosOffset(self.field[wallID])
+        if shift.length() < self.settings["locate_tolerance"]:
+            self.drive.pos -= shift
+        else:
+            print("ultraLocate failed due unexpected size of shift")
+
+    def updateWall(self, wall: Wall):
+        """This function works with known location and accordingly ajusts the wall"""
+        wall.move(self.getPosOffset(wall))
+
+    def updateField(self, wallID: int, recalculate: bool = True):
+        """This function works with known location and accordingly ajusts the field wall list"""
+        if recalculate:
+            self.moveField(self.getPosOffset(self.field[wallID]))
+        else:
+            self.updateWall(self.field[wallID])
+
+    
         
