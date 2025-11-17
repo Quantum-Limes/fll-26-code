@@ -67,6 +67,10 @@ class vec2:
         """Rotate the vector by a given angle in radians.
         for some reason not concidered as vector afterwards"""
         return mat2.rotation(angle) * self
+    
+    def split(self, oreintation: float):
+        """splits vector to its component under given angle (right angle triangle)"""
+        return rotateVec2(vec2(self.length() * cos(angleDiff(self.orientation() - oreintation, 0)), 0), oreintation)
 
 class mat2:
     def __init__(self, a: float, b:float , c:float, d:float):
