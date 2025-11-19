@@ -11,6 +11,11 @@ class Wall:
         self.a += shift
         self.b += shift
 
+def setField(a: vec2, b: vec2, c: vec2, d: vec2):
+    """sets the field object from corners
+    named from down left to right than up"""
+    return [Wall(a, b), Wall(b, c), Wall(c, d), Wall(d, a)]
+
 class UltraLocator:
     def __init__(self, drive: Drive, sensor: UltrasonicSensor, direction: float, offset: vec2):
         """This is advanced aligning tool sutiated for robots operating in enclosed 2D enviroment with ultrasonic sensor in the plane
@@ -25,13 +30,8 @@ class UltraLocator:
         self.sensor = sensor
         self.direction = radians(direction)  # in degrees
         self.offset = offset  # vec2 in mm
-        self.field = self.setField(vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1))
+        self.field = setField(vec2(0, 0), vec2(1, 0), vec2(1, 1), vec2(0, 1))
         self.settings = {"locate_tolerance": 50, "update_tolerance": 10}
-
-    def setField(self, a: vec2, b: vec2, c: vec2, d: vec2):
-        """sets the field object from corners
-        named from down left to right than up"""
-        return [Wall(a, b), Wall(b, c), Wall(c, d), Wall(d, a)]
 
     def moveField(self, shift: vec2):
         for wall in self.field:
