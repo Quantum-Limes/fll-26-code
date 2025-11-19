@@ -9,9 +9,8 @@ class Drive:
         self.driveBase = DriveBase(self.leftMotor, self.rightMotor, wheel_diameter, axle_track)
         self.wheelCircumference = wheel_diameter * pi # pls dej to do ajiny, nvm jak se to rekne
         self.axleTrack = axle_track
-        self.updateLocation(vec2(0,0), 0)
+        self.setLocation(vec2(0,0), 0)
         self.setMotorsToDef()
-        self.orientationReset()
         self.drive_settings = {
             "default": {"straight_speed": 1000, "turning_speed": 200, "min_speed": 50, "boundary_angle": pi/8, "straight_acceleration": 1, "tolerance": 1, "angle_tolerance": pi/200},
             "smooth": {"straight_speed": 1000, "turning_speed": 300, "min_speed": 50,"boundary_angle": pi/4, "straight_acceleration": 1, "tolerance": 1, "angle_tolerance": pi/200},
@@ -74,6 +73,15 @@ class Drive:
         length = self.getMotorAngle()*(self.wheelCircumference/360)
         self.updateLocation(self.pos + rotateVec2(vec2(length,0), orientation), orientation)
         #print(self.pos, self.orientation, length)
+
+    def setLocation(self, pos: vec2, orientation: float):
+        """Manual locate
+        Paramenters:
+        - pos: vec2 position in mm!
+        - angle: orientation in degres!
+        """
+        self.orientationReset(orientation)
+        self.updateLocation(pos, degrees(orientation))
 
     #speed calculators ats
     def getSpeed(self, length, stop, straightSpeed, minSpeed, brakeDist):
