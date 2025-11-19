@@ -14,30 +14,33 @@ class SuperArm(Arm):      #OTESTOVAT CELOU CLASSKU-    Nově rotateTo, raiseTo, 
         super().__init__(leftMotor=rotationMotor, rightMotor=liftMotor, color=color)
         self.rotationMotor = rotationMotor
         self.liftMotor = liftMotor
+        self.rotationalRatio = 60/28
 
     def align(self):
-        self.liftMotor.run_until_stalled(self.speed, Stop.HOLD, 60)
-        self.rotationMotor.run_until_stalled(self.speed, Stop.HOLD, 60)
+        self.liftMotor.run_until_stalled(-self.speed, Stop.HOLD, 60)
+        self.rotationMotor.run_until_stalled(-self.speed, Stop.HOLD, 60)
         self.liftMotor.reset_angle(0)
-        self.rotationMotor.reset_angle(-90)
+        self.rotationMotor.reset_angle(-90 * self.rotationalRatio)
 
     def rotateBy(self, xAngle: int, wait: bool = False):
         self.rotationMotor.run_angle(self.speed, xAngle/2*-1, Stop.HOLD, wait)
         self.liftMotor.run_angle(1/3, xAngle*3, Stop.HOLD, wait)
 
-    def rotateTo(self, xAngle: int, wait: bool = False):
-        self.rotationMotor.run_target(self.speed, xAngle, Stop.HOLD, wait)
-        self.liftMotor.run_angle(1/3, (xAngle-self.liftMotor.getMotorAngle())*3, Stop.HOLD, wait)
+    def moveTo(self, xAngle: int, yAngle: int, wait: bool = True):
+        yMot = (xAngle - self.rotationMotor.angle()) + 3 * yAngle
+        self.liftMotor.run_angle(1/3 * self.speed + self.speed * (yMot / (xAngle - self.rotationMotor.angle())-1), yMot, Stop.HOLD, False)
+        self.rotationMotor.run_target(self.speed, xAngle-self.rotationalRatio, Stop.HOLD, wait)
 
-    def raiseBy(self, yAngle, wait: bool = False):
+# -self.liftMotor.angle()
+
+    def raiseBy(self, yAngle, wait: bool = True):
         self.liftMotor.run_angle(self.speed, yAngle*3, Stop.HOLD, wait)
 
     def raiseTo(self, yAngle, wait: bool = False):
         self.liftMotor.run_target(self.speed, yAngle*3, Stop.HOLD, wait)
 
-    def moveTo(self, xAngle: int, yAngle: int, wait: bool = True):
-        self.rotateTo(xAngle, False)
-        self.raiseTo(yAngle, wait)
+    def rotateTo(self, xAngle: int, wait: bool = True):
+        self.moveTo(xAngle, 0,  wait)
 
 #OLD VERSION
 #class SuperArm(Arm):
