@@ -1,7 +1,6 @@
 from inicialization import *
 def ride1():
-    drive.updateLocation(vec2(85, 27), pi/2)
-    hub.imu.reset_heading(-90)
+    drive.setLocation(vec2(85, 27), pi/2)
     superruka.align()
     superruka.speed = 600
 
