@@ -1,14 +1,18 @@
-# from spike_lib.ultralocator import *
+from spike_lib.arms import *
+from spike_lib.ultralocator import*
+from spike_lib.mission_managment import*
 
+hub = PrimeHub(front_side=Axis.Y)
+Lw = Motor(Port.A, Direction.COUNTERCLOCKWISE)
+Rw = Motor(Port.E, Direction.CLOCKWISE)
+Ul = UltrasonicSensor(Port.C)
+La = Motor(Port.B)
+Ra = Motor(Port.F)
 
-# Lw = Motor(Port.A, Direction.COUNTERCLOCKWISE)
-# Rw = Motor(Port.E, Direction.CLOCKWISE)
-# Ul = UltrasonicSensor(Port.C)
-
-# robot = Robot(PrimeHub(front_side=Axis.Y))
-# drive = Drive(robot, left_motor=Lw, right_motor=Rw, wheel_diameter=56, axle_track=160)
-# ultra = UltraLocator(drive, Ul, 180, vec2(-130, 0))
-# #drive.updateLocation(vec2(0, 0), pi/2)
+robot = Robot(hub)
+drive = Drive(robot, left_motor=Lw, right_motor=Rw, wheel_diameter=56, axle_track=160)
+ultra = UltraLocator(drive, Ul, 180, vec2(-130, 0))
+#drive.updateLocation(vec2(0, 0), pi/2)
 # wall1 = Wall(vec2(0, 200), vec2(200, 200))
 # wall2 = Wall(vec2(0, 0), vec2(0, 200))
 
