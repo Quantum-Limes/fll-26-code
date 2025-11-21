@@ -1,7 +1,8 @@
 from spike_lib.drive import *
 class Arm:
-    def __init__(self, leftMotor: Motor, rightMotor: Motor, color: Color ):
+    def __init__(self, robot: Robot, leftMotor: Motor, rightMotor: Motor, color: Color ):
         self.color = color if color != None or Color.NONE else raiseError("Arm color must be specified!", ValueError)
+        self.robot = robot
         self.leftMotor = leftMotor
         self.rightMotor = rightMotor
         self.speed = 500
@@ -10,8 +11,8 @@ class Arm:
         pass
 
 class SuperArm(Arm): 
-    def __init__(self, rotationMotor: Motor, liftMotor: Motor, color: Color ):
-        super().__init__(leftMotor=rotationMotor, rightMotor=liftMotor, color=color)
+    def __init__(self, robot: Robot, rotationMotor: Motor, liftMotor: Motor, color: Color ):
+        super().__init__(robot, leftMotor=rotationMotor, rightMotor=liftMotor, color=color)
         self.rotationMotor = rotationMotor
         self.liftMotor = liftMotor
         self.rotRatio = 60 / 28 # out / in
@@ -58,8 +59,8 @@ class SuperArm(Arm):
         self.liftMotor.run_target(self.speed, yAngle*3, Stop.HOLD, wait)
 
 class LiftArm(Arm):
-    def __init__(self, liftMotor: Motor, stuffMotor: Motor, color: Color ):
-        super().__init__(self, leftMotor=liftMotor, rightMotor=liftMotor, color=color)
+    def __init__(self, robot: Robot, liftMotor: Motor, stuffMotor: Motor, color: Color ):
+        super().__init__(self, robot, leftMotor=liftMotor, rightMotor=liftMotor, color=color)
         self.liftMotor = liftMotor
         self.stuffMotor = stuffMotor
         self.liftHeight = 35
@@ -82,8 +83,8 @@ class LiftArm(Arm):
             self.stuffMotor.run_angle(self.speed, -45, Stop.HOLD, wait)
 
 class Mlaticka(Arm):
-    def __init__(self, holderMotor: Motor, mlaticiMotor: Motor, color: Color):
-        super().__init__(holderMotor, mlaticiMotor, color)
+    def __init__(self, robot: Robot, holderMotor: Motor, mlaticiMotor: Motor, color: Color):
+        super().__init__(robot, holderMotor, mlaticiMotor, color)
         self.mlaticiMotor = mlaticiMotor
         self.holderMotor  = holderMotor
 
