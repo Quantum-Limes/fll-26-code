@@ -47,7 +47,7 @@ class Drive:
     def motorsStop(self):
         """stops and holds both motors"""
         for motor in self.motors:
-            motor.hold()
+            motor.stop()
     
     #gyro contol
     def orientationReset(self, value: float = 0):

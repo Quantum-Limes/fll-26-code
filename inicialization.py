@@ -1,5 +1,6 @@
 from spike_lib.arms import *
 from spike_lib.ultralocator import*
+from spike_lib.mission_managment import*
 
 hub = PrimeHub(front_side=Axis.Y)
 robot = Robot(hub)
@@ -18,4 +19,4 @@ mlaticiruka = Mlaticka(robot, Ra, La, Color.BLUE)
 
 ultra = UltraLocator(drive, Ul, 180, vec2(-25, 0))
 
-field = ultra.setField(vec2(-180, 0), vec2(2182, 0), vec2(-180, 1144), vec2(2182, 1144))
+field = setField(vec2(-180, 0), vec2(2182, 0), vec2(-180, 1144), vec2(2182, 1144))

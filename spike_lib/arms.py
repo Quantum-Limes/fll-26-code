@@ -23,7 +23,7 @@ class SuperArm(Arm):
         Je časově náročná"""
         self.liftMotor.run_until_stalled(-self.speed, Stop.HOLD, 60)
         self.rotationMotor.run_until_stalled(-self.speed, Stop.HOLD, 60)
-        self.liftMotor.reset_angle(0)
+        self.liftMotor.reset_angle(-180 * self.liftRatio)
         self.rotationMotor.reset_angle(-90 * self.rotRatio)
 
     def moveBy(self, xAngle: int, yAngle: int, wait: bool = True):
@@ -32,19 +32,22 @@ class SuperArm(Arm):
         - xAngle: int - relativní úhle otočení
         - yAngle: int - relativní úhle naklopení
         - wait: bool"""
-        if fabs(xAngle) > fabs(yAngle):
-            self.liftMotor.run_angle(self.speed * (1/self.liftRatio + yAngle*self.liftRatio/xAngle), xAngle + self.liftRatio * yAngle, Stop.HOLD, False)
+        if xAngle == 0 and yAngle == 0:
+            return
+        elif fabs(xAngle) >= fabs(yAngle):
+            print("turning", xAngle, yAngle)
+            self.liftMotor.run_angle(self.speed * (1/self.liftRatio + yAngle*self.liftRatio/xAngle), xAngle - self.liftRatio * yAngle, Stop.HOLD, False)
             self.rotationMotor.run_angle(self.speed, xAngle*self.rotRatio, Stop.HOLD, wait)
         else:
             self.rotationMotor.run_angle(self.speed, xAngle*self.rotRatio, Stop.HOLD, False)
-            self.liftMotor.run_angle(self.speed * (1/self.liftRatio + xAngle/yAngle*self.liftRatio), xAngle + self.liftRatio * yAngle, Stop.HOLD, wait)
+            self.liftMotor.run_angle(self.speed, xAngle + self.liftRatio * yAngle, Stop.HOLD, wait)
 
     def moveTo(self, xAngle: int, yAngle: int, wait: bool = True):
         """Pohne rukou na absolutní úhel otočení a naklopeníParameters:
         - xAngle: int - absolutní úhle otočení
         - yAngle: int - absolutní úhle naklopení
         - wait: bool"""
-        self.moveBy(xAngle + self.rotationMotor.angle(), yAngle + self.liftMotor.angle(), wait)
+        self.moveBy((xAngle - self.rotationMotor.angle()/self.rotRatio), yAngle - self.liftMotor.angle()/self.liftRatio, wait)
 
     def rotateBy(self, xAngle: int, wait: bool = False):
         self.moveBy(xAngle, 0, wait)
